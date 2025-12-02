@@ -257,29 +257,25 @@ async def purchase_ticket(
                 call_data = call_data_hex
                 logger.info(f"Function call data encoded (fallback): {call_data[:20]}...")
             
-            # Smart Wallet에 이더 전송 (티켓 구매 비용)
-            # UserOperation의 value는 Smart Wallet에서 지불되므로, 먼저 이더를 전송해야 함
-            try:
-                smart_wallet_balance = web3_service.w3.eth.get_balance(
-                    Web3.to_checksum_address(current_user.smart_wallet_address)
+            # Smart Wallet 잔액 확인 (실제 서비스: 사용자가 충전해야 함)
+            smart_wallet_balance = web3_service.w3.eth.get_balance(
+                Web3.to_checksum_address(current_user.smart_wallet_address)
+            )
+            logger.info(f"Smart Wallet balance: {smart_wallet_balance} wei ({web3_service.w3.from_wei(smart_wallet_balance, 'ether')} ETH)")
+            
+            # 잔액 부족 시 에러 반환 (카드 결제 필요)
+            if smart_wallet_balance < event.price_wei:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "error": "Insufficient balance",
+                        "required": str(event.price_wei),
+                        "current": str(smart_wallet_balance),
+                        "smart_wallet_address": current_user.smart_wallet_address,
+                        "message": "Smart Wallet에 충분한 자금이 없습니다. 카드 결제를 진행해주세요.",
+                        "payment_required": True
+                    }
                 )
-                logger.info(f"Smart Wallet balance: {smart_wallet_balance} wei ({web3_service.w3.from_wei(smart_wallet_balance, 'ether')} ETH)")
-                
-                if smart_wallet_balance < event.price_wei:
-                    # Smart Wallet에 이더 전송 (서비스 계정에서)
-                    logger.info(f"Transferring {event.price_wei} wei to Smart Wallet...")
-                    transfer_tx = web3_service.w3.eth.send_transaction({
-                        'from': web3_service.address,
-                        'to': Web3.to_checksum_address(current_user.smart_wallet_address),
-                        'value': event.price_wei,
-                        'gas': 21000,
-                        'gasPrice': web3_service.w3.eth.gas_price
-                    })
-                    web3_service.w3.eth.wait_for_transaction_receipt(transfer_tx, timeout=60)
-                    logger.info(f"ETH transferred to Smart Wallet: {transfer_tx.hex()}")
-            except Exception as e:
-                logger.warning(f"Failed to transfer ETH to Smart Wallet: {e}")
-                # 계속 진행 (테스트 환경에서는 서비스 계정이 처리할 수 있음)
             
             # UserOperation 생성
             # call_data가 이미 bytes인지 확인

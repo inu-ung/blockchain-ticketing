@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, events, tickets, resales, refunds, admin, ipfs, user_operations
+from app.api.v1 import auth, events, tickets, resales, refunds, admin, ipfs, user_operations, payments
 
 api_router = APIRouter()
 
@@ -11,4 +11,5 @@ api_router.include_router(refunds.router, prefix="/refunds", tags=["refunds"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(ipfs.router, prefix="/ipfs", tags=["ipfs"])
 api_router.include_router(user_operations.router, prefix="/user-operations", tags=["user-operations"])
+api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 

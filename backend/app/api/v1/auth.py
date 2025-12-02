@@ -137,10 +137,12 @@ async def create_smart_wallet(
         from app.services.aa_service import aa_service
         
         # Deterministic 주소 생성 및 배포
-        # owner_address는 서비스 계정 사용 (나중에 사용자 주소로 변경 가능)
+        # owner_address는 사용자의 MetaMask 주소 사용 (사용자가 서명할 수 있도록)
+        # 현재는 사용자 주소가 없으면 서비스 계정 사용 (나중에 사용자가 연결하면 업데이트)
+        owner_address = current_user.wallet_address if current_user.wallet_address else None
         smart_wallet_address = aa_service.generate_smart_wallet_address(
             user_id=str(current_user.id),
-            owner_address=None  # None이면 서비스 계정 사용
+            owner_address=owner_address  # 사용자 주소 또는 None (서비스 계정 사용)
         )
         
         current_user.smart_wallet_address = smart_wallet_address

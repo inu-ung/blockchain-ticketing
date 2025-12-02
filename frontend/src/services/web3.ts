@@ -6,9 +6,85 @@ const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://localhost:8545';
 
 // Provider 인스턴스
 let provider: ethers.JsonRpcProvider | null = null;
+let browserProvider: ethers.BrowserProvider | null = null;
+let userSigner: ethers.JsonRpcSigner | null = null;
 
 /**
- * Web3 Provider 초기화
+ * MetaMask Provider 가져오기
+ */
+export function getBrowserProvider(): ethers.BrowserProvider | null {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    if (!browserProvider) {
+      browserProvider = new ethers.BrowserProvider(window.ethereum);
+    }
+    return browserProvider;
+  }
+  return null;
+}
+
+/**
+ * MetaMask 연결
+ */
+export async function connectMetaMask(): Promise<ethers.JsonRpcSigner> {
+  const browserProvider = getBrowserProvider();
+  if (!browserProvider) {
+    throw new Error('MetaMask not installed. Please install MetaMask extension.');
+  }
+  
+  // 계정 요청
+  await browserProvider.send('eth_requestAccounts', []);
+  
+  // Signer 가져오기
+  const signer = await browserProvider.getSigner();
+  userSigner = signer;
+  
+  return signer;
+}
+
+/**
+ * 연결된 MetaMask 주소 가져오기
+ */
+export async function getMetaMaskAddress(): Promise<string | null> {
+  try {
+    const browserProvider = getBrowserProvider();
+    if (!browserProvider) return null;
+    
+    const signer = await browserProvider.getSigner();
+    return await signer.getAddress();
+  } catch (error) {
+    console.error('Failed to get MetaMask address:', error);
+    return null;
+  }
+}
+
+/**
+ * Smart Wallet에 이더 충전
+ */
+export async function chargeSmartWallet(
+  smartWalletAddress: string,
+  amount: bigint
+): Promise<string> {
+  const browserProvider = getBrowserProvider();
+  if (!browserProvider) {
+    throw new Error('MetaMask not installed');
+  }
+  
+  const signer = await browserProvider.getSigner();
+  
+  // Smart Wallet 주소로 이더 전송
+  const tx = await signer.sendTransaction({
+    to: smartWalletAddress,
+    value: amount
+  });
+  
+  // 트랜잭션 완료 대기
+  await tx.wait();
+  
+  return tx.hash;
+}
+
+/**
+ * Web3 Provider 초기화 (RPC용)
  */
 export function getProvider(): ethers.JsonRpcProvider {
   if (!provider) {

@@ -15,6 +15,14 @@ module.exports = {
     hardhat: {
       chainId: 1337,
     },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 1337,
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        count: 20,
+      },
+    },
     mumbai: {
       url: process.env.POLYGON_MUMBAI_RPC_URL || "https://rpc-mumbai.maticvigil.com",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],

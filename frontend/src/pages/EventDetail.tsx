@@ -1,9 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useEvent, usePurchaseTicket } from '../hooks/useEvents';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore } from '../components/ToastContainer';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PaymentModal from '../components/PaymentModal';
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +14,7 @@ export default function EventDetail() {
   const { isAuthenticated } = useAuthStore();
   const purchaseTicket = usePurchaseTicket();
   const addToast = useToastStore((state) => state.addToast);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -34,6 +37,13 @@ export default function EventDetail() {
       return;
     }
 
+    if (!id || !event) return;
+
+    // 결제 모달 표시
+    setShowPaymentModal(true);
+  };
+
+  const handlePurchaseConfirm = () => {
     if (!id) return;
 
     purchaseTicket.mutate(
@@ -41,10 +51,20 @@ export default function EventDetail() {
       {
         onSuccess: () => {
           addToast('티켓 구매가 완료되었습니다!', 'success');
+          setShowPaymentModal(false);
           navigate('/tickets');
         },
         onError: (error: any) => {
-          addToast(error.response?.data?.detail || '구매에 실패했습니다.', 'error');
+          const errorDetail = error.response?.data?.detail;
+          
+          // 잔액 부족 에러 처리
+          if (error.response?.status === 402 || (errorDetail && typeof errorDetail === 'object' && errorDetail.error === 'Insufficient balance')) {
+            addToast('Smart Wallet 잔액이 부족합니다. 충전 후 다시 시도해주세요.', 'error');
+            // 모달은 유지 (충전 가능하도록)
+          } else {
+            addToast(errorDetail?.message || errorDetail || '구매에 실패했습니다.', 'error');
+            setShowPaymentModal(false);
+          }
         },
       }
     );
@@ -191,6 +211,17 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      {/* 결제 모달 */}
+      {event && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePurchaseConfirm}
+          eventPrice={BigInt(event.price_wei)}
+          eventName={event.name}
+        />
+      )}
     </Layout>
   );
 }
