@@ -24,10 +24,43 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/backend || exit 1
-            git pull origin main
-            docker-compose -f docker-compose.prod.yml down
+            set -e
+            echo "=========================================="
+            echo "Backend Deployment Started"
+            echo "=========================================="
+            echo "Current directory: $(pwd)"
+            echo "Checking backend directory..."
+            ls -la ~/backend || echo "⚠️ Backend directory not found"
+            cd ~/backend || { echo "❌ Failed to cd to ~/backend"; exit 1; }
+            echo "✅ Backend directory found"
+            echo ""
+            echo "Checking Git repository..."
+            git remote -v || echo "⚠️ Git repository not initialized"
+            echo ""
+            echo "Pulling latest code..."
+            git pull origin main || { echo "⚠️ Git pull failed, trying to initialize..."; git init; git remote add origin https://github.com/inu-ung/blockchain-ticketing.git || true; git fetch origin; git checkout -b main origin/main || true; }
+            echo ""
+            echo "Checking Docker..."
+            docker --version || { echo "❌ Docker not installed"; exit 1; }
+            docker-compose --version || { echo "❌ Docker Compose not installed"; exit 1; }
+            echo ""
+            echo "Stopping containers..."
+            docker-compose -f docker-compose.prod.yml down || true
+            echo ""
+            echo "Building images..."
             docker-compose -f docker-compose.prod.yml build --no-cache
+            echo ""
+            echo "Starting containers..."
             docker-compose -f docker-compose.prod.yml up -d
+            echo ""
+            echo "Checking container status..."
+            docker-compose -f docker-compose.prod.yml ps
+            echo ""
+            echo "Showing logs..."
+            sleep 5
             docker-compose -f docker-compose.prod.yml logs --tail=50 backend
+            echo ""
+            echo "=========================================="
+            echo "Deployment completed!"
+            echo "=========================================="
 
