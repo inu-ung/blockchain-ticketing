@@ -1,0 +1,120 @@
+name: Deploy Smart Contracts
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'contracts/**'
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to deploy to'
+        required: true
+        type: choice
+        options:
+          - amoy
+          - polygon
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./contracts
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ./contracts
+        if: ${{ !inputs.skip_tests }}
+        run: npm test
+        env:
+          FORCE_COLOR: 1
+
+      - name: Compile contracts
+        working-directory: ./contracts
+        run: npm run compile
+
+      - name: Determine network
+        id: network
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "network=${{ inputs.network }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "network=polygon" >> $GITHUB_OUTPUT
+          else
+            echo "network=amoy" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to network
+        working-directory: ./contracts
+        run: |
+          npm run deploy:${{ steps.network.outputs.network }}
+        env:
+          PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          POLYGON_AMOY_RPC_URL: ${{ secrets.POLYGON_AMOY_RPC_URL }}
+          POLYGON_MAINNET_RPC_URL: ${{ secrets.POLYGON_MAINNET_RPC_URL }}
+          ENTRY_POINT_ADDRESS: ${{ secrets.ENTRY_POINT_ADDRESS }}
+        continue-on-error: false
+
+      - name: Verify contracts
+        working-directory: ./contracts
+        if: steps.deploy.outcome == 'success'
+        run: |
+          npm run verify:${{ steps.network.outputs.network }}
+        env:
+          POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
+          POLYGON_AMOY_RPC_URL: ${{ secrets.POLYGON_AMOY_RPC_URL }}
+          POLYGON_MAINNET_RPC_URL: ${{ secrets.POLYGON_MAINNET_RPC_URL }}
+
+      - name: Upload deployment artifacts
+        if: steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-${{ steps.network.outputs.network }}-${{ github.sha }}
+          path: contracts/deployments/${{ steps.network.outputs.network }}.json
+          retention-days: 90
+
+      - name: Create deployment summary
+        if: steps.deploy.outcome == 'success'
+        run: |
+          cat << EOF > deployment-summary.md
+          # Deployment Summary
+          
+          **Network:** ${{ steps.network.outputs.network }}
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Deployed by:** ${{ github.actor }}
+          **Time:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Contract Addresses
+          
+          \`\`\`json
+          $(cat contracts/deployments/${{ steps.network.outputs.network }}.json)
+          \`\`\`
+          EOF
+
+      - name: Upload deployment summary
+        if: steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-summary-${{ steps.network.outputs.network }}
+          path: deployment-summary.md
+

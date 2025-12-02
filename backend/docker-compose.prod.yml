@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticketing-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - POLYGON_MUMBAI_RPC_URL=${POLYGON_MUMBAI_RPC_URL}
+      - POLYGON_MAINNET_RPC_URL=${POLYGON_MAINNET_RPC_URL}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - TICKET_ACCESS_CONTROL_ADDRESS=${TICKET_ACCESS_CONTROL_ADDRESS}
+      - TICKET_NFT_ADDRESS=${TICKET_NFT_ADDRESS}
+      - EVENT_MANAGER_ADDRESS=${EVENT_MANAGER_ADDRESS}
+      - MARKETPLACE_ADDRESS=${MARKETPLACE_ADDRESS}
+      - REFUND_MANAGER_ADDRESS=${REFUND_MANAGER_ADDRESS}
+      - SMART_WALLET_FACTORY_ADDRESS=${SMART_WALLET_FACTORY_ADDRESS}
+      - ENTRY_POINT_ADDRESS=${ENTRY_POINT_ADDRESS}
+      - PINATA_API_KEY=${PINATA_API_KEY}
+      - PINATA_SECRET_KEY=${PINATA_SECRET_KEY}
+      - BUNDLER_URL=${BUNDLER_URL}
+      - PAYMASTER_URL=${PAYMASTER_URL}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - ticketing-network
+
+  postgres:
+    image: postgres:14
+    container_name: ticketing-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - ticketing-network
+
+volumes:
+  postgres_data:
+
+networks:
+  ticketing-network:
+    driver: bridge
+

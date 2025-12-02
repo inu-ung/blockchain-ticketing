@@ -1,0 +1,51 @@
+name: Test Smart Contracts
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'contracts/**'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'contracts/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./contracts
+        run: npm ci
+
+      - name: Compile contracts
+        working-directory: ./contracts
+        run: npm run compile
+
+      - name: Run tests
+        working-directory: ./contracts
+        run: npm test
+        env:
+          FORCE_COLOR: 1
+
+      - name: Generate test coverage
+        working-directory: ./contracts
+        run: |
+          npm test -- --coverage || true
+
