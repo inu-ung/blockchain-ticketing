@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { API_URL } from '../utils/constants';
 import apiClient from './api';
 
 // 로컬 Hardhat 노드 또는 Polygon RPC

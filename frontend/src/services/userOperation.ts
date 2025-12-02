@@ -50,8 +50,8 @@ export async function createUserOperation(
  * 향후 사용자 지갑에서 직접 서명하도록 변경 가능
  */
 export async function signUserOperation(
-  userOperation: UserOperation,
-  privateKey?: string
+  _userOperation: UserOperation,
+  _privateKey?: string
 ): Promise<string> {
   // 현재는 백엔드에서 서명하므로 이 함수는 사용하지 않음
   // 향후 사용자 지갑에서 직접 서명할 때 사용

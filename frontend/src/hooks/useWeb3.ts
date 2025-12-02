@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import { getProvider, ensureSmartWallet, getNetworkInfo, getBalance } from '../services/web3';
 import { useAuthStore } from '../store/authStore';
-import apiClient from '../services/api';
 
 interface Web3State {
   isConnected: boolean;
